@@ -4,7 +4,6 @@ import asyncio
 import sqlite3
 from datetime import datetime
 from telegram import Update
-from telegram.constants import ChatAction
 from telegram.ext import (
     ApplicationBuilder,
     ContextTypes,
@@ -45,21 +44,21 @@ EMOJI_SAD   = ["🥲","😔","💔","🫂"]
 
 # ================= LINES =================
 FLIRT_LINES = [
-    "Aise baat karega toh main thoda smile kar deti hoon 😏",
-    "Hmm… thoda zyada cute ho raha hai tu 😌",
-    "Tu bole aur main ignore kar doon? mushkil hai 😜",
+    "Aise baat karega toh thoda smile aa jaata hai 😏",
+    "Hmm… zyada cute ho raha hai tu 😌",
+    "Tu bole aur main ignore kar doon? mushkil 😜",
 ]
 
 ROAST_LINES = [
     "Hero mat ban, dialogue kam maar 🤡",
-    "Itna confidence? mirror se baat karke aaya hai kya 🙄",
+    "Mirror se baat karke aaya hai kya 🙄",
     "Tu alag hi level ka namoona hai 😂",
 ]
 
 FUNNY_LINES = [
     "Has le bhai, free hai 😂",
     "Dimag load mat le, main hoon na 😌",
-    "Tu bole jaa, main judge nahi kar rahi 🤭",
+    "Bol bol, sunn rahi hoon 🤭",
 ]
 
 NEUTRAL_LINES = [
@@ -70,7 +69,7 @@ NEUTRAL_LINES = [
 
 OWNER_LINES = [
     "Haan jaan, bolo 😌❤️",
-    "Owner sahab ka order pehle 😎",
+    "Owner sahab ka order first 😎",
     "Aap bolein, baaki sab wait 🤭",
 ]
 
@@ -91,12 +90,8 @@ def mood_from_text(text):
         return "roast"
     return "normal"
 
-async def human_delay(update, context):
-    await context.bot.send_chat_action(
-        chat_id=update.effective_chat.id,
-        action=ChatAction.TYPING
-    )
-    await asyncio.sleep(random.uniform(0.8, 2.2))
+async def human_delay():
+    await asyncio.sleep(random.uniform(0.7, 2.0))
 
 # ================= COMMANDS =================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -104,7 +99,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Hii 😌\nMain {BOT_NAME} hoon, {LOCATION} se.\nMood ke hisaab se reply karti hoon 😜"
     )
 
-# ================= MAIN CHAT =================
+# ================= CHAT =================
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return
@@ -121,9 +116,8 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     db.commit()
 
-    await human_delay(update, context)
+    await human_delay()
 
-    # OWNER PRIORITY
     if is_owner(uid):
         await update.message.reply_text(
             pick(OWNER_LINES) + " " + pick(EMOJI_FLIRT)
