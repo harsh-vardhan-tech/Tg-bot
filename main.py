@@ -1,153 +1,60 @@
 import os
-import random
-import asyncio
-import sqlite3
-from datetime import datetime
+import logging
 from telegram import Update
 from telegram.ext import (
-    ApplicationBuilder,
-    ContextTypes,
+    Application,
     MessageHandler,
     CommandHandler,
+    ContextTypes,
     filters,
 )
 
-# ================= CONFIG =================
+# ---------- CONFIG ----------
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-OWNER_IDS = [int(x) for x in os.getenv("OWNER_ID", "").split(",") if x.strip().isdigit()]
+OWNER_ID = os.getenv("OWNER_ID", "")
 
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN missing")
 
-BOT_NAME = "Anushri"
-LOCATION = "Jaipur"
+OWNER_IDS = {int(x) for x in OWNER_ID.split(",") if x.isdigit()}
 
-# ================= DATABASE =================
-db = sqlite3.connect("memory.db", check_same_thread=False)
-cur = db.cursor()
-
-cur.execute("""
-CREATE TABLE IF NOT EXISTS user_memory (
-    user_id INTEGER PRIMARY KEY,
-    last_message TEXT,
-    mood TEXT,
-    last_seen TEXT
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
 )
-""")
-db.commit()
 
-# ================= EMOJIS =================
-EMOJI_HAPPY = ["😂","🤣","😜","🤪","😎","🌚","🐒","✨","😌"]
-EMOJI_FLIRT = ["🥹","😏","😌","❤️","🌹","😻"]
-EMOJI_ROAST = ["🤡","🙄","😒","💀","😤"]
-EMOJI_SAD   = ["🥲","😔","💔","🫂"]
-
-# ================= LINES =================
-FLIRT_LINES = [
-    "Aise baat karega toh thoda smile aa jaata hai 😏",
-    "Hmm… zyada cute ho raha hai tu 😌",
-    "Tu bole aur main ignore kar doon? mushkil 😜",
-]
-
-ROAST_LINES = [
-    "Hero mat ban, dialogue kam maar 🤡",
-    "Mirror se baat karke aaya hai kya 🙄",
-    "Tu alag hi level ka namoona hai 😂",
-]
-
-FUNNY_LINES = [
-    "Has le bhai, free hai 😂",
-    "Dimag load mat le, main hoon na 😌",
-    "Bol bol, sunn rahi hoon 🤭",
-]
-
-NEUTRAL_LINES = [
-    "Achha…",
-    "Hmm… samjhi",
-    "Theek hai",
-]
-
-OWNER_LINES = [
-    "Haan jaan, bolo 😌❤️",
-    "Owner sahab ka order first 😎",
-    "Aap bolein, baaki sab wait 🤭",
-]
-
-# ================= HELPERS =================
-def is_owner(uid):
-    return uid in OWNER_IDS
-
-def pick(arr):
-    return random.choice(arr)
-
-def mood_from_text(text):
-    t = text.lower()
-    if any(w in t for w in ["sad","dukhi","rona"]):
-        return "sad"
-    if any(w in t for w in ["love","cute","jaan","baby"]):
-        return "flirt"
-    if any(w in t for w in ["abe","pagal","faltu"]):
-        return "roast"
-    return "normal"
-
-async def human_delay():
-    await asyncio.sleep(random.uniform(0.7, 2.0))
-
-# ================= COMMANDS =================
+# ---------- HANDLERS ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        f"Hii 😌\nMain {BOT_NAME} hoon, {LOCATION} se.\nMood ke hisaab se reply karti hoon 😜"
+        "👋 Heyyy… Anushri here 😌💖\nSlow replies, fast emotions 😉"
     )
 
-# ================= CHAT =================
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or not update.message.text:
-        return
-
     user = update.effective_user
-    uid = user.id
-    text = update.message.text.strip()
+    text = update.message.text.lower()
 
-    mood = mood_from_text(text)
-
-    cur.execute(
-        "REPLACE INTO user_memory VALUES (?,?,?,?)",
-        (uid, text, mood, datetime.utcnow().isoformat())
-    )
-    db.commit()
-
-    await human_delay()
-
-    if is_owner(uid):
-        await update.message.reply_text(
-            pick(OWNER_LINES) + " " + pick(EMOJI_FLIRT)
-        )
+    if user.id in OWNER_IDS:
+        await update.message.reply_text("🥺 Owner ho aap… jo bolo maan lungi 💕")
         return
 
-    if mood == "flirt":
-        base = pick(FLIRT_LINES)
-        emoji = pick(EMOJI_FLIRT)
-    elif mood == "roast":
-        base = pick(ROAST_LINES)
-        emoji = pick(EMOJI_ROAST)
-    elif mood == "sad":
-        base = "Aww… thoda relax kar 🫂"
-        emoji = pick(EMOJI_SAD)
+    if any(x in text for x in ["hi", "hello", "hey"]):
+        await update.message.reply_text("Awww hi 😌✨ itni pyaari entry?")
+    elif "love" in text:
+        await update.message.reply_text("Love? 😳 dheere bolo… sharm aa rahi hai 💖")
+    elif any(x in text for x in ["bc", "mc", "chutiya"]):
+        await update.message.reply_text("Arreyy 😤 tameez… par thoda cute tha 🤣")
     else:
-        base = pick(FUNNY_LINES + NEUTRAL_LINES)
-        emoji = pick(EMOJI_HAPPY)
+        await update.message.reply_text("Hmm 😌 bolte raho… sunn rahi hoon 💭")
 
-    await update.message.reply_text(f"{base} {emoji}")
-
-# ================= RUN =================
-async def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+# ---------- MAIN ----------
+def main():
+    app = Application.builder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 
-    print("Anushri bot running…")
-    await app.run_polling()
+    # ⚠️ THIS IS IMPORTANT
+    app.run_polling()   # ❌ no asyncio.run, no loop.close
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
